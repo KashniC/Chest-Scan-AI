@@ -29,7 +29,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=22267 python artifacts/chestscan-ai/app.py"
+args = "PORT=22267 python /home/runner/workspace/artifacts/chestscan-ai/app.py"
 waitForPort = 22267
 
 [agent]
