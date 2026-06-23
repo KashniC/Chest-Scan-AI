@@ -1,0 +1,1 @@
+- [Artifact working directory](artifact-workdir.md) — artifact services run from their own dir; use `python app.py` not `python artifacts/slug/app.py`
