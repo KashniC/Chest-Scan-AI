@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChestScan AI — Lung X-Ray Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --surface2: #f7fafc;
+      --border: #e2e8f0;
+      --text: #1a202c;
+      --text-muted: #718096;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #eff6ff;
+      --healthy: #16a34a;
+      --pneumonia: #dc2626;
+      --tuberculosis: #d97706;
+      --covid: #7c3aed;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+      --shadow-lg: 0 4px 6px rgba(0,0,0,.05), 0 10px 40px rgba(0,0,0,.1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ─── Header ─── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+    }
+
+    .badge {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #0ea5e9 100%);
+      color: white;
+      padding: 72px 24px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 span { color: #7dd3fc; }
+
+    .hero p {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      opacity: .85;
+      max-width: 560px;
+      margin: 0 auto 28px;
+      font-weight: 400;
+    }
+
+    .hero-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .chip {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.25);
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 99px;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ─── Main layout ─── */
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+    }
+
+    @media (max-width: 800px) {
+      .main { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .card-header .icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .card-body { padding: 24px; }
+
+    /* ─── Upload zone ─── */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+
+    #drop-zone.hover, #drop-zone:hover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    #drop-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    .drop-title {
+      font-weight: 600;
+      font-size: .95rem;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .drop-sub {
+      font-size: .8rem;
+      color: var(--text-muted);
+    }
+
+    #preview-wrap {
+      display: none;
+      margin-top: 16px;
+      position: relative;
+    }
+
+    #preview-img {
+      width: 100%;
+      max-height: 240px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #000;
+      display: block;
+    }
+
+    .clear-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,.6);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .analyze-btn {
+      margin-top: 16px;
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 0;
+      font-size: .95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .analyze-btn:hover { background: var(--primary-dark); }
+    .analyze-btn:active { transform: scale(.98); }
+    .analyze-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Results ─── */
+    #results-card { display: none; }
+
+    .result-top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: var(--surface2);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .result-badge {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      flex-shrink: 0;
+    }
+
+    .result-label {
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+
+    .result-conf {
+      font-size: .85rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .class-bars { display: flex; flex-direction: column; gap: 12px; }
+
+    .class-row label {
+      display: flex;
+      justify-content: space-between;
+      font-size: .82rem;
+      font-weight: 500;
+      margin-bottom: 5px;
+      text-transform: capitalize;
+    }
+
+    .bar-track {
+      height: 8px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.8s cubic-bezier(.22,1,.36,1);
+      width: 0%;
+    }
+
+    /* ─── Sample images ─── */
+    .samples-wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 10px;
+    }
+
+    .sample-item {
+      cursor: pointer;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: border-color .2s, transform .15s, box-shadow .15s;
+      position: relative;
+      aspect-ratio: 1;
+    }
+
+    .sample-item:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37,99,235,.2);
+    }
+
+    .sample-item.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.2);
+    }
+
+    .sample-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: invert(1) contrast(0.9);
+      background: #000;
+    }
+
+    .sample-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,.7);
+      color: white;
+      font-size: .6rem;
+      font-weight: 600;
+      text-align: center;
+      padding: 3px;
+      text-transform: capitalize;
+    }
+
+    .samples-filter {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .filter-btn {
+      padding: 4px 12px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: white;
+      font-size: .75rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .15s;
+      text-transform: capitalize;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* ─── Fun facts ─── */
+    .facts-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .fact-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px;
+      background: var(--surface2);
+      border-radius: 8px;
+      border-left: 3px solid var(--primary);
+    }
+
+    .fact-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+    .fact-text {
+      font-size: .82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .fact-text strong { color: var(--text); }
+
+    /* ─── Model info ─── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .info-item {
+      padding: 14px;
+      background: var(--surface2);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .info-item .label {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .info-item .value {
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ─── Loading overlay ─── */
+    #loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    #loading-overlay.show { display: flex; }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    .loading-text {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    /* ─── Status bar ─── */
+    #status-bar {
+      display: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: .85rem;
+      font-weight: 500;
+      margin-top: 12px;
+    }
+
+    #status-bar.error {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    #status-bar.info {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: 1px solid #bfdbfe;
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      color: var(--text-muted);
+      font-size: .8rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      margin-top: 20px;
+    }
+
+    footer strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay (first model load) -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading AI model…</div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">🫁</div>
+      ChestScan AI
+    </a>
+    <span class="badge">CNN Classifier</span>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <h1>AI-Powered <span>Chest X-Ray</span> Analysis</h1>
+  <p>Upload a chest X-ray and get instant classification across four conditions using a deep convolutional neural network.</p>
+  <div class="hero-chips">
+    <span class="chip">✓ Healthy</span>
+    <span class="chip">✓ Pneumonia</span>
+    <span class="chip">✓ Tuberculosis</span>
+    <span class="chip">✓ COVID-19</span>
+  </div>
+</section>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Left column -->
+  <div style="display:flex;flex-direction:column;gap:28px;">
+
+    <!-- Upload card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">📤</div>
+        <h2>Upload X-Ray</h2>
+      </div>
+      <div class="card-body">
+        <div id="drop-zone">
+          <input type="file" id="file-input" accept="image/*" />
+          <div class="drop-icon">🔬</div>
+          <div class="drop-title">Drop your X-ray image here</div>
+          <div class="drop-sub">PNG, JPG, WebP — or click to browse</div>
+        </div>
+        <div id="preview-wrap">
+          <img id="preview-img" alt="Preview" />
+          <button class="clear-btn" onclick="clearImage()" title="Remove">✕</button>
+        </div>
+        <button class="analyze-btn" id="analyze-btn" disabled onclick="runAnalysis()">
+          <div class="spinner" id="btn-spinner"></div>
+          <span id="btn-text">Select an image to analyze</span>
+        </button>
+        <div id="status-bar"></div>
+      </div>
+    </div>
+
+    <!-- Results card -->
+    <div class="card" id="results-card">
+      <div class="card-header">
+        <div class="icon">📊</div>
+        <h2>Diagnosis Results</h2>
+      </div>
+      <div class="card-body">
+        <div class="result-top" id="result-top">
+          <div class="result-badge" id="result-badge"></div>
+          <div>
+            <div class="result-label" id="result-label">—</div>
+            <div class="result-conf" id="result-conf">—</div>
+          </div>
+        </div>
+        <div class="class-bars" id="class-bars"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right column -->
+  <div style="display:flex;flex-direction:column;gap:28px;">
+
+    <!-- Sample images card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">🖼</div>
+        <h2>Try a Sample Image</h2>
+      </div>
+      <div class="card-body">
+        <div class="samples-filter" id="filter-row">
+          <button class="filter-btn active" data-filter="all" onclick="filterSamples('all',this)">All</button>
+          <button class="filter-btn" data-filter="healthy" onclick="filterSamples('healthy',this)">Healthy</button>
+          <button class="filter-btn" data-filter="pneumonia" onclick="filterSamples('pneumonia',this)">Pneumonia</button>
+          <button class="filter-btn" data-filter="tuberculosis" onclick="filterSamples('tuberculosis',this)">TB</button>
+          <button class="filter-btn" data-filter="covid" onclick="filterSamples('covid',this)">COVID-19</button>
+        </div>
+        <div class="samples-wrap" id="samples-wrap">
+          <div style="color:var(--text-muted);font-size:.85rem;grid-column:1/-1;">Loading samples…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fun facts card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">💡</div>
+        <h2>Did You Know?</h2>
+      </div>
+      <div class="card-body">
+        <div class="facts-grid">
+          <div class="fact-item">
+            <div class="fact-icon">🫁</div>
+            <div class="fact-text"><strong>Pneumonia</strong> kills over 2.5 million people annually, making it the world's leading infectious cause of death.</div>
+          </div>
+          <div class="fact-item">
+            <div class="fact-icon">🦠</div>
+            <div class="fact-text"><strong>COVID-19</strong> causes characteristic "ground-glass opacities" — hazy patches visible on X-rays that show where the lungs are damaged.</div>
+          </div>
+          <div class="fact-item">
+            <div class="fact-icon">🔬</div>
+            <div class="fact-text"><strong>Tuberculosis</strong> has infected 1 in 4 people worldwide. X-rays remain a primary screening tool in high-burden countries.</div>
+          </div>
+          <div class="fact-item">
+            <div class="fact-icon">🧠</div>
+            <div class="fact-text"><strong>CNN models</strong> can analyze an X-ray in milliseconds, compared to the minutes or hours it may take a radiologist in busy settings.</div>
+          </div>
+          <div class="fact-item">
+            <div class="fact-icon">⚕️</div>
+            <div class="fact-text"><strong>Always consult</strong> a licensed medical professional. AI tools assist but do not replace clinical diagnosis.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model info card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon">🤖</div>
+        <h2>Model Information</h2>
+      </div>
+      <div class="card-body">
+        <div class="info-grid" id="model-info">
+          <div class="info-item">
+            <div class="label">Architecture</div>
+            <div class="value">CNN (Keras)</div>
+          </div>
+          <div class="info-item">
+            <div class="label">Classes</div>
+            <div class="value" id="info-classes">4</div>
+          </div>
+          <div class="info-item">
+            <div class="label">Input Size</div>
+            <div class="value" id="info-size">—</div>
+          </div>
+          <div class="info-item">
+            <div class="label">Status</div>
+            <div class="value" id="info-status">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <strong>ChestScan AI</strong> — For research and educational purposes only.<br />
+  Not a substitute for professional medical advice, diagnosis, or treatment.
+</footer>
+
+<script>
+  const BASE = '';
+  let allSamples = [];
+  let selectedFile = null;
+  let modelLoaded = false;
+
+  const CLASS_COLORS = {
+    healthy: '#16a34a',
+    pneumonia: '#dc2626',
+    tuberculosis: '#d97706',
+    covid: '#7c3aed',
+  };
+
+  const CLASS_ICONS = {
+    healthy: '✅',
+    pneumonia: '🔴',
+    tuberculosis: '🟡',
+    covid: '🟣',
+  };
+
+  // ── Status check ──────────────────────────────────────────────
+  async function checkStatus() {
+    try {
+      const res = await fetch(`${BASE}/app/status`);
+      if (!res.ok) return;
+      const data = await res.json();
+      modelLoaded = data.model_loaded;
+      document.getElementById('info-status').textContent = modelLoaded ? '✅ Ready' : '⏳ Loading…';
+      document.getElementById('info-size').textContent = data.img_size ? `${data.img_size}×${data.img_size}` : '—';
+      document.getElementById('info-classes').textContent = data.class_names ? data.class_names.length : 4;
+      document.getElementById('loading-overlay').classList.remove('show');
+      if (!modelLoaded) setTimeout(checkStatus, 2000);
+    } catch (e) {
+      setTimeout(checkStatus, 3000);
+    }
+  }
+
+  // ── Samples ───────────────────────────────────────────────────
+  async function loadSamples() {
+    try {
+      const res = await fetch(`${BASE}/app/samples`);
+      const data = await res.json();
+      allSamples = data.samples || [];
+      renderSamples('all');
+    } catch (e) {
+      document.getElementById('samples-wrap').innerHTML =
+        '<div style="color:var(--text-muted);font-size:.85rem;grid-column:1/-1;">Could not load samples.</div>';
+    }
+  }
+
+  function renderSamples(filter) {
+    const wrap = document.getElementById('samples-wrap');
+    const items = filter === 'all' ? allSamples : allSamples.filter(s => s.label === filter);
+    if (!items.length) {
+      wrap.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem;grid-column:1/-1;">No samples found.</div>';
+      return;
+    }
+    // Show up to 24 samples
+    const shown = items.slice(0, 24);
+    wrap.innerHTML = shown.map(s => `
+      <div class="sample-item" data-file="${s.filename}" data-label="${s.label}"
+           onclick="loadSample('${s.filename}','${s.label}',this)" title="${s.label}">
+        <img src="${BASE}/samples/${s.filename}" alt="${s.label}" loading="lazy" />
+        <div class="sample-caption">${s.label}</div>
+      </div>
+    `).join('');
+  }
+
+  function filterSamples(filter, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderSamples(filter);
+  }
+
+  async function loadSample(filename, label, el) {
+    document.querySelectorAll('.sample-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    try {
+      const res = await fetch(`${BASE}/samples/${filename}`);
+      const blob = await res.blob();
+      const file = new File([blob], filename, { type: 'image/png' });
+      setFile(file);
+    } catch (e) {
+      showStatus('error', 'Could not load sample image.');
+    }
+  }
+
+  // ── File handling ─────────────────────────────────────────────
+  function setFile(file) {
+    selectedFile = file;
+    const url = URL.createObjectURL(file);
+    document.getElementById('preview-img').src = url;
+    document.getElementById('preview-wrap').style.display = 'block';
+    document.getElementById('drop-zone').style.display = 'none';
+    updateBtn();
+    hideStatus();
+  }
+
+  function clearImage() {
+    selectedFile = null;
+    document.getElementById('preview-img').src = '';
+    document.getElementById('preview-wrap').style.display = 'none';
+    document.getElementById('drop-zone').style.display = 'block';
+    document.getElementById('results-card').style.display = 'none';
+    document.querySelectorAll('.sample-item').forEach(i => i.classList.remove('active'));
+    updateBtn();
+    hideStatus();
+  }
+
+  function updateBtn() {
+    const btn = document.getElementById('analyze-btn');
+    const txt = document.getElementById('btn-text');
+    if (!selectedFile) {
+      btn.disabled = true;
+      txt.textContent = 'Select an image to analyze';
+    } else if (!modelLoaded) {
+      btn.disabled = true;
+      txt.textContent = 'Model loading, please wait…';
+    } else {
+      btn.disabled = false;
+      txt.textContent = 'Analyze X-Ray';
+    }
+  }
+
+  // ── Drop zone ─────────────────────────────────────────────────
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) setFile(e.target.files[0]);
+  });
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('hover');
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+  });
+
+  // ── Analysis ──────────────────────────────────────────────────
+  async function runAnalysis() {
+    if (!selectedFile || !modelLoaded) return;
+
+    const btn = document.getElementById('analyze-btn');
+    const spinner = document.getElementById('btn-spinner');
+    const txt = document.getElementById('btn-text');
+
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    txt.textContent = 'Analyzing…';
+    hideStatus();
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const res = await fetch(`${BASE}/app/predict`, { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Server error ${res.status}`);
+      }
+      const data = await res.json();
+      showResults(data);
+    } catch (e) {
+      showStatus('error', `Analysis failed: ${e.message}`);
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      txt.textContent = 'Analyze X-Ray';
+    }
+  }
+
+  function showResults(data) {
+    const card = document.getElementById('results-card');
+    card.style.display = 'block';
+
+    const label = data.prediction;
+    const conf = Math.round(data.confidence * 100);
+    const color = CLASS_COLORS[label] || '#2563eb';
+    const icon = CLASS_ICONS[label] || '🔵';
+
+    document.getElementById('result-badge').textContent = icon;
+    document.getElementById('result-badge').style.background = color + '20';
+    document.getElementById('result-label').textContent = label;
+    document.getElementById('result-label').style.color = color;
+    document.getElementById('result-conf').textContent = `${conf}% confidence`;
+
+    const barsEl = document.getElementById('class-bars');
+    barsEl.innerHTML = '';
+
+    (data.all_classes || []).forEach(cls => {
+      const pct = Math.round(cls.confidence * 100);
+      const c = CLASS_COLORS[cls.label] || '#2563eb';
+      const row = document.createElement('div');
+      row.className = 'class-row';
+      row.innerHTML = `
+        <label>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${c};display:inline-block;flex-shrink:0;"></span>
+            ${cls.label}
+          </span>
+          <span style="color:${c};font-weight:600;">${pct}%</span>
+        </label>
+        <div class="bar-track">
+          <div class="bar-fill" data-pct="${pct}" style="background:${c};"></div>
+        </div>
+      `;
+      barsEl.appendChild(row);
+    });
+
+    // Animate bars
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.querySelectorAll('.bar-fill').forEach(b => {
+          b.style.width = b.dataset.pct + '%';
+        });
+      });
+    });
+
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function showStatus(type, msg) {
+    const bar = document.getElementById('status-bar');
+    bar.className = type;
+    bar.textContent = msg;
+    bar.style.display = 'block';
+  }
+
+  function hideStatus() {
+    document.getElementById('status-bar').style.display = 'none';
+  }
+
+  // ── Init ──────────────────────────────────────────────────────
+  document.getElementById('loading-overlay').classList.add('show');
+  checkStatus();
+  loadSamples();
+</script>
+</body>
+</html>

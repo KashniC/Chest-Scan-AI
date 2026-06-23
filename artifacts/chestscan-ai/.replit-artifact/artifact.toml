@@ -1,0 +1,29 @@
+kind = "web"
+previewPath = "/"
+title = "ChestScan AI"
+version = "1.0.0"
+id = "artifacts/chestscan-ai"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22267
+
+[services.development]
+run = "python artifacts/chestscan-ai/app.py"
+
+[services.env]
+PORT = "22267"
+
+[services.production]
+
+[services.production.run]
+args = ["python", "artifacts/chestscan-ai/app.py"]
+
+[services.production.run.env]
+PORT = "22267"
