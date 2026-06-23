@@ -15,7 +15,7 @@ paths = [ "/" ]
 localPort = 22267
 
 [services.development]
-run = "python app.py"
+run = "python /home/runner/workspace/artifacts/chestscan-ai/app.py"
 
 [services.env]
 PORT = "22267"
@@ -23,7 +23,7 @@ PORT = "22267"
 [services.production]
 
 [services.production.run]
-args = ["python", "app.py"]
+args = ["python", "/home/runner/workspace/artifacts/chestscan-ai/app.py"]
 
 [services.production.run.env]
 PORT = "22267"
