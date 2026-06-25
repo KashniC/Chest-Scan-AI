@@ -540,6 +540,99 @@
       border: 1px solid #bfdbfe;
     }
 
+    /* ─── Confidence warning ─── */
+    .confidence-warning {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 16px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-left: 4px solid #f59e0b;
+      border-radius: 8px;
+      font-size: .83rem;
+      color: #92400e;
+      line-height: 1.5;
+    }
+
+    .confidence-warning strong { color: #78350f; }
+
+    /* ─── Advice card ─── */
+    .advice-section { display: none; margin-top: 0; }
+
+    .advice-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .advice-badge {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+    }
+
+    .advice-title { font-size: 1rem; font-weight: 700; }
+    .advice-subtitle { font-size: .8rem; color: var(--text-muted); margin-top: 2px; }
+
+    .advice-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+
+    .advice-step {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 12px 14px;
+      background: var(--surface2);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .step-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: .75rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-text { font-size: .83rem; line-height: 1.5; color: var(--text); }
+    .step-text strong { color: var(--text); }
+
+    .advice-disclaimer {
+      padding: 10px 14px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      font-size: .78rem;
+      color: #166534;
+      line-height: 1.4;
+    }
+
+    /* ─── Download button ─── */
+    .download-btn {
+      margin-top: 16px;
+      width: 100%;
+      background: white;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+      border-radius: 8px;
+      padding: 11px 0;
+      font-size: .9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .download-btn:hover { background: var(--primary-light); }
+
     /* ─── Footer ─── */
     footer {
       text-align: center;
@@ -631,6 +724,33 @@
           </div>
         </div>
         <div class="class-bars" id="class-bars"></div>
+        <div class="confidence-warning" id="confidence-warning">
+          ⚠️ <strong>Low confidence result.</strong> The model is uncertain about this image. This may be due to image quality, unusual presentation, or a condition the model hasn't seen clearly before. <strong>Do not rely on this result</strong> — please consult a qualified radiologist or physician.
+        </div>
+        <button class="download-btn" id="download-btn" onclick="downloadReport()" style="display:none;">
+          ⬇ Download Report (PDF)
+        </button>
+      </div>
+    </div>
+
+    <!-- Advice card -->
+    <div class="card advice-section" id="advice-card">
+      <div class="card-header">
+        <div class="icon">🩺</div>
+        <h2>What To Do Next</h2>
+      </div>
+      <div class="card-body">
+        <div class="advice-header">
+          <div class="advice-badge" id="advice-badge"></div>
+          <div>
+            <div class="advice-title" id="advice-title"></div>
+            <div class="advice-subtitle" id="advice-subtitle"></div>
+          </div>
+        </div>
+        <div class="advice-steps" id="advice-steps"></div>
+        <div class="advice-disclaimer">
+          ✅ <strong>Remember:</strong> This AI tool is for educational and research purposes only. Always seek diagnosis and treatment from a licensed medical professional.
+        </div>
       </div>
     </div>
 
@@ -827,10 +947,15 @@
 
   function clearImage() {
     selectedFile = null;
+    lastResult = null;
+    lastImageDataUrl = null;
     document.getElementById('preview-img').src = '';
     document.getElementById('preview-wrap').style.display = 'none';
     document.getElementById('drop-zone').style.display = 'block';
     document.getElementById('results-card').style.display = 'none';
+    document.getElementById('advice-card').style.display = 'none';
+    document.getElementById('download-btn').style.display = 'none';
+    document.getElementById('confidence-warning').style.display = 'none';
     document.querySelectorAll('.sample-item').forEach(i => i.classList.remove('active'));
     updateBtn();
     hideStatus();
@@ -900,7 +1025,61 @@
     }
   }
 
+  const ADVICE = {
+    healthy: {
+      icon: '✅', color: '#16a34a',
+      title: 'No Signs of Disease Detected',
+      subtitle: 'Your scan appears clear. Keep up the good work!',
+      steps: [
+        { text: '<strong>Schedule regular checkups</strong> — annual chest X-rays are recommended for adults over 40, or anyone with a history of smoking.' },
+        { text: '<strong>Maintain a healthy lifestyle</strong> — avoid smoking, exercise regularly, and maintain a balanced diet to keep your lungs healthy.' },
+        { text: '<strong>Watch for symptoms</strong> — if you develop persistent cough, shortness of breath, or chest pain, consult your doctor promptly.' },
+        { text: '<strong>Vaccinate</strong> — stay up to date on flu and pneumonia vaccines to protect your respiratory health.' },
+      ]
+    },
+    pneumonia: {
+      icon: '🔴', color: '#dc2626',
+      title: 'Possible Pneumonia Detected',
+      subtitle: 'Pneumonia is a serious lung infection requiring medical attention.',
+      steps: [
+        { text: '<strong>See a doctor immediately</strong> — pneumonia requires professional diagnosis and is typically treated with antibiotics (bacterial) or antivirals (viral).' },
+        { text: '<strong>Do not self-medicate</strong> — only a physician can determine the correct antibiotic and dosage based on the type of pneumonia.' },
+        { text: '<strong>Rest and stay hydrated</strong> — drink plenty of fluids and get bed rest while your body fights the infection.' },
+        { text: '<strong>Monitor your symptoms</strong> — if you experience severe shortness of breath, high fever, or blue lips, go to the emergency room immediately.' },
+        { text: '<strong>Follow up</strong> — return for a follow-up X-ray 4–6 weeks after treatment to confirm full recovery.' },
+      ]
+    },
+    tuberculosis: {
+      icon: '🟡', color: '#d97706',
+      title: 'Possible Tuberculosis (TB) Detected',
+      subtitle: 'TB is a serious bacterial infection that requires immediate care.',
+      steps: [
+        { text: '<strong>Seek medical care urgently</strong> — TB is treatable but requires a specific 6–9 month course of antibiotics. Do not delay.' },
+        { text: '<strong>Isolate to prevent spread</strong> — TB spreads through the air. Wear a mask, avoid close contact with others, and stay home until cleared by your doctor.' },
+        { text: '<strong>Get tested</strong> — your doctor will order sputum tests, blood tests (IGRA), and additional imaging to confirm TB before starting treatment.' },
+        { text: '<strong>Notify close contacts</strong> — family members and close contacts should be tested and may need preventive treatment.' },
+        { text: '<strong>Complete the full treatment</strong> — stopping medication early can cause drug-resistant TB, which is much harder to treat.' },
+      ]
+    },
+    covid: {
+      icon: '🟣', color: '#7c3aed',
+      title: 'Possible COVID-19 Signs Detected',
+      subtitle: 'COVID-19 lung involvement requires prompt medical evaluation.',
+      steps: [
+        { text: '<strong>Isolate immediately</strong> — stay home and away from others, especially the elderly or immunocompromised, to prevent spread.' },
+        { text: '<strong>Contact your doctor or healthcare provider</strong> — they can advise on testing, monitoring, and treatment options including antivirals.' },
+        { text: '<strong>Monitor your oxygen levels</strong> — use a pulse oximeter if available. Levels below 94% require emergency medical attention.' },
+        { text: '<strong>If breathing becomes difficult</strong> — go to the emergency room. COVID-19 pneumonia can worsen rapidly.' },
+        { text: '<strong>Rest, hydrate, and track symptoms</strong> — fever, fatigue, and cough typically peak in days 5–10. Keep a symptom diary to share with your doctor.' },
+      ]
+    },
+  };
+
+  let lastResult = null;
+  let lastImageDataUrl = null;
+
   function showResults(data) {
+    lastResult = data;
     const card = document.getElementById('results-card');
     card.style.display = 'block';
 
@@ -911,13 +1090,16 @@
 
     document.getElementById('result-badge').textContent = icon;
     document.getElementById('result-badge').style.background = color + '20';
-    document.getElementById('result-label').textContent = label;
+    document.getElementById('result-label').textContent = label.charAt(0).toUpperCase() + label.slice(1);
     document.getElementById('result-label').style.color = color;
     document.getElementById('result-conf').textContent = `${conf}% confidence`;
 
+    // Confidence warning
+    const warning = document.getElementById('confidence-warning');
+    warning.style.display = conf < 70 ? 'block' : 'none';
+
     const barsEl = document.getElementById('class-bars');
     barsEl.innerHTML = '';
-
     (data.all_classes || []).forEach(cls => {
       const pct = Math.round(cls.confidence * 100);
       const c = CLASS_COLORS[cls.label] || '#2563eb';
@@ -927,7 +1109,7 @@
         <label>
           <span style="display:flex;align-items:center;gap:6px;">
             <span style="width:10px;height:10px;border-radius:50%;background:${c};display:inline-block;flex-shrink:0;"></span>
-            ${cls.label}
+            ${cls.label.charAt(0).toUpperCase() + cls.label.slice(1)}
           </span>
           <span style="color:${c};font-weight:600;">${pct}%</span>
         </label>
@@ -947,7 +1129,129 @@
       });
     });
 
+    // Show download button
+    document.getElementById('download-btn').style.display = 'flex';
+
+    // Capture preview image as data URL for report
+    const previewImg = document.getElementById('preview-img');
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = previewImg.naturalWidth || 128;
+      canvas.height = previewImg.naturalHeight || 128;
+      canvas.getContext('2d').drawImage(previewImg, 0, 0);
+      lastImageDataUrl = canvas.toDataURL('image/png');
+    } catch(e) { lastImageDataUrl = null; }
+
+    // Advice section
+    const advice = ADVICE[label] || ADVICE['healthy'];
+    document.getElementById('advice-badge').textContent = advice.icon;
+    document.getElementById('advice-badge').style.background = advice.color + '20';
+    document.getElementById('advice-title').textContent = advice.title;
+    document.getElementById('advice-title').style.color = advice.color;
+    document.getElementById('advice-subtitle').textContent = advice.subtitle;
+
+    const stepsEl = document.getElementById('advice-steps');
+    stepsEl.innerHTML = advice.steps.map((s, i) => `
+      <div class="advice-step">
+        <div class="step-num">${i + 1}</div>
+        <div class="step-text">${s.text}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('advice-card').style.display = 'block';
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function downloadReport() {
+    if (!lastResult) return;
+    const label = lastResult.prediction;
+    const conf = Math.round(lastResult.confidence * 100);
+    const advice = ADVICE[label] || ADVICE['healthy'];
+    const color = CLASS_COLORS[label] || '#2563eb';
+    const now = new Date().toLocaleString();
+    const lowConf = conf < 70;
+
+    const bars = (lastResult.all_classes || []).map(cls => {
+      const pct = Math.round(cls.confidence * 100);
+      const c = CLASS_COLORS[cls.label] || '#2563eb';
+      return `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:500;margin-bottom:4px;">
+            <span>${cls.label.charAt(0).toUpperCase() + cls.label.slice(1)}</span>
+            <span style="color:${c};font-weight:700;">${pct}%</span>
+          </div>
+          <div style="height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${c};border-radius:99px;"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const steps = advice.steps.map((s, i) => `
+      <div style="display:flex;gap:12px;margin-bottom:10px;padding:12px;background:#f7fafc;border-radius:8px;border:1px solid #e2e8f0;">
+        <div style="width:24px;height:24px;border-radius:50%;background:#2563eb;color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+        <div style="font-size:13px;line-height:1.5;">${s.text}</div>
+      </div>`).join('');
+
+    const imgTag = lastImageDataUrl
+      ? `<img src="${lastImageDataUrl}" style="max-width:200px;max-height:200px;object-fit:contain;border:1px solid #e2e8f0;border-radius:8px;background:#000;display:block;margin:0 auto 16px;" />`
+      : '';
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>ChestScan AI Report — ${now}</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 32px; color: #1a202c; }
+  h1 { color: #2563eb; margin-bottom: 4px; }
+  .subtitle { color: #718096; font-size: 14px; margin-bottom: 32px; }
+  .section { margin-bottom: 28px; }
+  h2 { font-size: 16px; color: #1a202c; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 16px; }
+  .result-box { background: ${color}15; border: 2px solid ${color}; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; }
+  .result-label { font-size: 28px; font-weight: 800; color: ${color}; text-transform: capitalize; }
+  .result-conf { font-size: 15px; color: #718096; margin-top: 4px; }
+  .warning { background: #fffbeb; border: 1px solid #fcd34d; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; margin-bottom: 20px; }
+  .disclaimer { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #166534; margin-top: 16px; }
+  .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 12px; color: #718096; text-align: center; }
+  @media print { body { padding: 20px; } }
+</style>
+</head><body>
+<h1>🫁 ChestScan AI — Analysis Report</h1>
+<div class="subtitle">Generated: ${now} &nbsp;|&nbsp; For educational purposes only</div>
+
+${imgTag}
+
+<div class="section">
+  <h2>📊 Diagnosis Result</h2>
+  <div class="result-box">
+    <div class="result-label">${label}</div>
+    <div class="result-conf">${conf}% confidence</div>
+  </div>
+  ${lowConf ? '<div class="warning">⚠️ <strong>Low confidence result.</strong> The model is uncertain about this image. Do not rely on this result — consult a qualified physician.</div>' : ''}
+  ${bars}
+</div>
+
+<div class="section">
+  <h2>🩺 What To Do Next — ${advice.title}</h2>
+  <p style="font-size:13px;color:#718096;margin-bottom:14px;">${advice.subtitle}</p>
+  ${steps}
+  <div class="disclaimer">✅ <strong>Remember:</strong> This AI tool is for educational and research purposes only. Always seek diagnosis and treatment from a licensed medical professional.</div>
+</div>
+
+<div class="footer">ChestScan AI &nbsp;|&nbsp; Not a substitute for professional medical advice, diagnosis, or treatment.</div>
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chestscan-report-${label}-${Date.now()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // Also open print dialog for PDF
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
   }
 
   function showStatus(type, msg) {
